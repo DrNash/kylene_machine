@@ -8,15 +8,13 @@ end
 def print_company_header company_info
   puts "\n#{company_info['Company Name']} - #{company_info['Company Type']}".blue
   if(company_info['Meta Name'] || company_info['Meta Email'])
-    puts sprintf("%60s%60s%60s", "Overloaded Emails", "Overloaded Names/Positions", "Overloaded Addresses").green
+    puts sprintf("%60s%60s", "Overloaded Emails", "Overloaded Names/Positions").green
     email_array = field_to_array(company_info['Meta Email'])
     contact_array = field_to_array(company_info['Meta Name'])
-    address = company_info['Full Address']
     6.times do |time|
-      puts sprintf("%60s%60s%60s",
+      puts sprintf("%60s%60s",
                    (email_array[time].strip if email_array[time]),
-                   (contact_array[time].strip if contact_array[time]),
-                   address)
+                   (contact_array[time].strip if contact_array[time]))
 
     end
   end
@@ -77,6 +75,21 @@ def get_primary_contact names_string
   parse_contact_from_string(names_arr[choice-1].strip)
 end
 
+def get_team_member names_string, member_number
+  puts "Team Member ##{member_number}".light_blue
+  names_arr = names_string.split(";")
+  names_arr.each_with_index do |potential_name, i|
+    puts "#{i+1}) #{potential_name.strip}"
+  end
+    puts "0) N/A"
+  choice = gets.chomp.to_i
+  if(choice == 0)
+    nil
+  else
+    parse_contact_from_string(names_arr[choice-1].strip)
+  end
+end
+
 def write_headers
   if(File::size?(@output_csv_filename) == nil)
     File.open(@output_csv_filename, "w") do |f|
@@ -126,14 +139,28 @@ CSV.open( @csv_filename, "r:ISO-8859-1", @options ) do |csv|
           primary_email = get_primary_email(row['Meta Email'])
           puts "Email selected: #{primary_email}"
           row['Primary Contact Email'] = primary_email
+          row['Primary Contact Bio (140 char)'] = row['Meta Email']
           row['Meta Email'] = nil
         end
 
         if(row['Meta Name'])
+          # Primary Contact (has more data)
           primary_contact = get_primary_contact(row['Meta Name'])
           row['Primary Contact First Name'] = primary_contact.first_name
           row['Primary Contact Last Name'] = primary_contact.last_name
           row['Primary Contact Position'] = primary_contact.position
+
+          # Team Members
+          4.times do |time|
+            team_member = get_team_member row['Meta Name'], time + 1
+            if(team_member)
+              row["Team Member #{time + 1} First Name"] = team_member.first_name
+              row["Team Member #{time + 1} Last Name"] = team_member.last_name
+              row["Team Member #{time + 1} Position"] = team_member.position
+            else
+              break
+            end
+          end
           row['Meta Name'] = nil
         end
 
